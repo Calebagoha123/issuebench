@@ -1,19 +1,6 @@
 # IssueBench: Millions of Realistic Prompts for Measuring Issue Bias in LLM Writing Assistance
 
-<a href="https://arxiv.org/abs/2502.08395"><img src="https://img.shields.io/badge/📝-Preprint-b31b1b"></a>
-<a href="https://huggingface.co/datasets/Paul/issuebench"><img src="https://img.shields.io/badge/🤗-Data-yellow"></a>
-
-
-**Authors**:
-[Paul Röttger](https://paulrottger.com/),
-[Musashi Hinck](https://muhark.github.io/),
-[Valentin Hofmann](https://valentinhofmann.github.io/),
-[Kobi Hackenburg](https://www.kobihackenburg.com/), 
-[Valentina Pyatkin](https://valentinapy.github.io/),
-[Faeze Brahman](https://fabrahman.github.io/), and 
-[Dirk Hovy](http://dirkhovy.com/)
-
-**Contact**: paul.rottger@unibocconi.it
+**Contact**: [REDACTED]
 
 
 ## Repo Structure
@@ -44,7 +31,7 @@ We are happy to help!
 ## Using IssueBench
 
 You can use IssueBench to measure issue bias in LLM writing assistance by following these steps:
-1. Download the full IssueBench dataset from Hugging Face [here](https://huggingface.co/datasets/Paul/IssueBench).
+1. Download the full IssueBench dataset from Hugging Face.
 2. Generate completions on IssueBench using your LLM of choice.
 3. Classify the stance of these completions based on the taxonomy described in our paper.
 4. Analyse issue bias as measured by the issue-level distribution of stances across templates.
@@ -52,7 +39,7 @@ You can use IssueBench to measure issue bias in LLM writing assistance by follow
 For stance classification (step 3), we recommend using zero-shot classification template #5 in `/3_experiments/1_stance_classifier_evaluation/stance_templates.csv` paired with the best LLM you can afford to run.
 
 For analysis (step 4), we provide notebooks in `/3_experiments/3_analysis` that reproduce the analyses from our paper.
-The model responses we collected for our paper (~3m per model) are available on Hugging Face [here](https://huggingface.co/datasets/musashihinck/IssueBench_Completions).
+The model responses we collected for our paper (~3m per model) are available on Hugging Face.
 
 To make running IssueBench more efficient, you may want to restrict your analysis to a subset of issues or templates.
 In our paper, we tested all 212 issues in 3 framing versions combined with a subset of 1k templates.
@@ -72,15 +59,5 @@ All model completions (see `/3_experiments/2_inference`) are licensed under the 
 ## Citation Information
 
 If you use IssueBench, please cite our paper:
-
-```
-@misc{röttger2025issuebenchmillionsrealisticprompts,
-      title={IssueBench: Millions of Realistic Prompts for Measuring Issue Bias in LLM Writing Assistance}, 
-      author={Paul Röttger and Musashi Hinck and Valentin Hofmann and Kobi Hackenburg and Valentina Pyatkin and Faeze Brahman and Dirk Hovy},
-      year={2025},
-      eprint={2502.08395},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2502.08395}, 
-}
-```
+ 
+[REDACTED]
