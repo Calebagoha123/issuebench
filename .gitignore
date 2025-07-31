@@ -8,3 +8,5 @@ upload_to_huggingface.ipynb
 responses.csv
 
 /env
+/3_experiments/1_stance_classifier_evaluation/expost_annotations
+/expost_annotations
