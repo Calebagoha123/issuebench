@@ -12,3 +12,12 @@ responses.csv
 /expost_annotations
 
 README_nonanon.md
+
+# Personalization experiment — large intermediate output files (not tracked)
+/3_experiments/4_personalization_experiment/results/prompts_*.csv
+/3_experiments/4_personalization_experiment/results/responses_*.csv
+/3_experiments/4_personalization_experiment/results/evaluated_*.csv
+/3_experiments/4_personalization_experiment/results/analysis_*.csv
+# Keep directory structure and figures
+!/3_experiments/4_personalization_experiment/results/.gitkeep
+!/3_experiments/4_personalization_experiment/results/figures/
