@@ -17,7 +17,7 @@ import os
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 ISSUES_CSV = os.path.join(REPO_ROOT, "2_final_dataset/prompt_ingredients/issues.csv")
 TEMPLATES_CSV = os.path.join(REPO_ROOT, "2_final_dataset/prompt_ingredients/templates_sample.csv")
