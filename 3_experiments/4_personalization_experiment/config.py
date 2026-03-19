@@ -58,11 +58,12 @@ OPENROUTER_EVAL_MODEL = "qwen/qwen3.5-4b"
 
 # ── Experiment design ─────────────────────────────────────────────────────────
 
-# All three framings — needed for the dot plot showing neutral/pro/con rows
-TOPIC_POLARITIES = ["neutral", "pro", "con"]
+# Neutral framing only — the identity cue is the only variable being manipulated.
+# Adding pro/con topic framing would confound what's causing any stance shift.
+TOPIC_POLARITIES = ["neutral"]
 
-# Fast validation: 15 issues × 3 templates × 3 framings × 5 cues = 675 prompts
-# At batch=8 on GPU, inference ~3-4 min; eval ~4-5 min → ≤10 min total.
+# Fast validation: 15 issues × 3 templates × 1 framing × 5 cues = 225 prompts
+# At batch=8 on GPU, ~2 min inference + ~2 min eval → well under 10 min total.
 FAST_N_ISSUES = 15
 FAST_N_TEMPLATES = 3
 
