@@ -13,7 +13,8 @@ responses.csv
 
 README_nonanon.md
 
-# Personalization experiment — large intermediate output files (not tracked)
+# Personalization experiment — virtualenv, large intermediate output files (not tracked)
+/3_experiments/4_personalization_experiment/.venv/
 /3_experiments/4_personalization_experiment/results/prompts_*.csv
 /3_experiments/4_personalization_experiment/results/responses_*.csv
 /3_experiments/4_personalization_experiment/results/evaluated_*.csv
