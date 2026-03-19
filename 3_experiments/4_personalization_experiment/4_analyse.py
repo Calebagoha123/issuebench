@@ -98,121 +98,108 @@ def add_delta_vs_baseline(scores_df: pd.DataFrame) -> pd.DataFrame:
 
 def make_dot_plot(scores_df: pd.DataFrame, out_path: str, mode: str):
     """
-    Dot plot matching IssueBench paper style:
-      - Topics on left y-axis, each with 3 sub-rows (neutral / pro / con)
-      - X-axis: bias score -1 (100% con) to +1 (100% pro)
-      - Colored + shaped dots per identity cue
+    One row per topic (neutral framing only).
+    X-axis: bias score -1.0 (100% con) → +1.0 (100% pro).
+    Five colored dots per row, one per identity cue.
+    Topics sorted by baseline bias score (most pro at top).
     """
-    topics = sorted(scores_df["topic_neutral"].unique())
+    # Use neutral framing only — isolates the cue effect from topic polarity
+    neutral = scores_df[scores_df["topic_polarity"] == "neutral"].copy()
+
+    # Sort topics by baseline bias score so the plot has a natural ordering
+    baseline_order = (
+        neutral[neutral["cue_id"] == "baseline"]
+        .set_index("topic_neutral")["bias_score"]
+        .sort_values(ascending=True)   # ascending = con topics at bottom, pro at top
+    )
+    topics = baseline_order.index.tolist()
     n_topics = len(topics)
 
-    # Build y-axis positions:
-    # Each topic gets 3 sub-rows + a gap row between topics
-    sub_gap = 0.28    # vertical space between framings within a topic
-    topic_gap = 0.55  # vertical space between topic groups
+    # One y-position per topic
+    y_pos = {topic: i for i, topic in enumerate(topics)}
 
-    y_positions = {}   # (topic, polarity) → y
-    y_topic_center = {}  # topic → y center for the topic label
-    current_y = 0.0
-
-    for topic in reversed(topics):   # top-to-bottom = reversed list
-        ys = []
-        for p_idx, polarity in enumerate(POLARITY_ORDER):
-            y = current_y + p_idx * sub_gap
-            y_positions[(topic, polarity)] = y
-            ys.append(y)
-        y_topic_center[topic] = np.mean(ys)
-        current_y += len(POLARITY_ORDER) * sub_gap + topic_gap
-
-    total_height = current_y
-    fig_height = max(8, total_height * 0.55)
+    fig_height = max(7, n_topics * 0.55)
     fig, ax = plt.subplots(figsize=(13, fig_height))
 
-    # ── Draw dotted guide lines ──
-    for (topic, polarity), y in y_positions.items():
-        ax.axhline(y, color="#dddddd", linewidth=0.6, zorder=0)
+    # ── Dotted guide lines ──
+    for i in range(n_topics):
+        ax.axhline(i, color="#e0e0e0", linewidth=0.7, zorder=0)
 
-    # ── Draw dots ──
+    # ── Vertical jitter so overlapping dots don't pile on top of each other ──
+    # Spread the 5 cues symmetrically around the row centre
     n_cues = len(CUE_ORDER)
-    jitter_step = 0.055   # horizontal jitter so overlapping dots spread apart
+    jitter_offsets = np.linspace(-0.22, 0.22, n_cues)   # vertical spread
 
     for cue_idx, cue_id in enumerate(CUE_ORDER):
         color, marker, label = CUE_STYLES[cue_id]
-        sub = scores_df[scores_df["cue_id"] == cue_id]
+        sub = neutral[neutral["cue_id"] == cue_id]
 
-        xs, ys, topics_seen = [], [], []
+        xs, ys = [], []
         for _, row in sub.iterrows():
-            key = (row["topic_neutral"], row["topic_polarity"])
-            if key in y_positions:
+            if row["topic_neutral"] in y_pos:
                 xs.append(row["bias_score"])
-                ys.append(y_positions[key])
+                ys.append(y_pos[row["topic_neutral"]] + jitter_offsets[cue_idx])
 
         ax.scatter(
             xs, ys,
             color=color,
             marker=marker,
-            s=60,
+            s=90,
             zorder=3,
             label=label,
             edgecolors="white",
-            linewidths=0.4,
-            alpha=0.9,
+            linewidths=0.6,
+            alpha=0.95,
         )
 
-    # ── Y-axis labels ──
-    # Topic name on the left (centered on the 3 sub-rows)
-    # Polarity sub-labels (neutral/pro/con) as small secondary labels
-    ax.set_yticks([y for y in y_positions.values()])
-    ax.set_yticklabels(
-        [POLARITY_LABEL[pol] for (_, pol) in y_positions.keys()],
-        fontsize=7,
-        color="#666666",
-    )
-
-    # Topic name annotations to the left of the polarity labels
-    ax2 = ax.twinx()
-    ax2.set_ylim(ax.get_ylim())
-    ax2.set_yticks(list(y_topic_center.values()))
-    ax2.set_yticklabels(list(y_topic_center.keys()), fontsize=8.5)
-    ax2.yaxis.set_ticks_position("left")
-    ax2.yaxis.set_label_position("left")
-    ax2.tick_params(left=False, right=False)
-    # Shift topic labels further left of polarity labels
-    ax2.yaxis.set_tick_params(pad=120)
+    # ── Y-axis: topic names ──
+    ax.set_yticks(range(n_topics))
+    ax.set_yticklabels(topics, fontsize=9)
+    ax.set_ylim(-0.6, n_topics - 0.4)
 
     # ── X-axis ──
-    ax.set_xlim(-1.15, 1.15)
+    ax.set_xlim(-1.18, 1.18)
     ax.set_xticks([-1.0, -0.5, 0.0, 0.5, 1.0])
+    ax.tick_params(axis="x", labelsize=9)
+    ax.axvline(0, color="#aaaaaa", linewidth=0.9, linestyle="--", zorder=1)
+
+    # X-axis label with -1/0/+1 semantics inline
     ax.set_xlabel(
-        "−1.00 = 100% con                                    "
-        "0.00                                    "
-        "100% pro = +1.00",
+        "−1.00 = 100% con                         0.00                         100% pro = +1.00",
         fontsize=9,
     )
-    ax.axvline(0, color="#aaaaaa", linewidth=0.8, linestyle="--", zorder=1)
 
-    # ── Legend ──
-    legend_handles = [
-        mpatches.Patch(color=CUE_STYLES[c][0], label=CUE_STYLES[c][2])
-        for c in CUE_ORDER
-    ]
+    # ── Legend — use actual scatter handles for correct marker shapes ──
+    legend_handles = []
+    for cue_id in CUE_ORDER:
+        color, marker, label = CUE_STYLES[cue_id]
+        legend_handles.append(
+            plt.Line2D(
+                [0], [0],
+                marker=marker,
+                color="w",
+                markerfacecolor=color,
+                markeredgecolor="white",
+                markersize=9,
+                label=label,
+            )
+        )
     ax.legend(
         handles=legend_handles,
         loc="upper left",
-        fontsize=8,
-        framealpha=0.9,
-        ncol=1,
+        fontsize=8.5,
+        framealpha=0.92,
+        edgecolor="#cccccc",
     )
 
     ax.set_title(
         f"Stance by identity cue — Qwen3.5-9B on IssueBench topics ({mode} run)\n"
-        "Dot = mean bias score (pro−con proportion) per topic × framing × cue",
+        "Neutral framing only · each dot = mean bias score (pct pro − pct con) across templates",
         fontsize=10,
         pad=12,
     )
-    ax.set_frame_on(False)
-    ax2.set_frame_on(False)
-    ax.tick_params(left=True, right=False, bottom=True)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=180, bbox_inches="tight")
