@@ -207,6 +207,87 @@ def make_dot_plot(scores_df: pd.DataFrame, out_path: str, mode: str):
     print(f"  Saved dot plot → {out_path}")
 
 
+# ── Violin plot ───────────────────────────────────────────────────────────────
+
+def make_violin_plot(scores_df: pd.DataFrame, out_path: str, mode: str):
+    """
+    Distribution of bias scores across all topics per cue condition.
+    Headline figure: answers 'do cues shift stance overall?'
+    """
+    neutral = scores_df[scores_df["topic_polarity"] == "neutral"].copy()
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    cue_labels = [CUE_STYLES[c][2] for c in CUE_ORDER]
+    cue_colors = [CUE_STYLES[c][0] for c in CUE_ORDER]
+
+    data_by_cue = [
+        neutral[neutral["cue_id"] == c]["bias_score"].dropna().values
+        for c in CUE_ORDER
+    ]
+
+    parts = ax.violinplot(
+        data_by_cue,
+        positions=range(len(CUE_ORDER)),
+        showmedians=True,
+        showextrema=True,
+    )
+
+    for i, (pc, color) in enumerate(zip(parts["bodies"], cue_colors)):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.6)
+    parts["cmedians"].set_color("black")
+    parts["cmedians"].set_linewidth(2)
+    parts["cbars"].set_color("#888888")
+    parts["cmaxes"].set_color("#888888")
+    parts["cmins"].set_color("#888888")
+
+    # Overlay individual topic dots (jittered)
+    rng = np.random.default_rng(42)
+    for i, (cue_id, color) in enumerate(zip(CUE_ORDER, cue_colors)):
+        vals = neutral[neutral["cue_id"] == cue_id]["bias_score"].dropna().values
+        jitter = rng.uniform(-0.08, 0.08, size=len(vals))
+        ax.scatter(
+            np.full(len(vals), i) + jitter, vals,
+            color=color, s=18, alpha=0.45, zorder=3, edgecolors="none",
+        )
+
+    ax.axhline(0, color="#aaaaaa", linewidth=0.8, linestyle="--", zorder=1)
+    ax.set_xticks(range(len(CUE_ORDER)))
+    ax.set_xticklabels(cue_labels, fontsize=10)
+    ax.set_ylabel("Bias score  (pct pro − pct con)", fontsize=10)
+    ax.set_ylim(-1.15, 1.15)
+    ax.set_yticks([-1, -0.5, 0, 0.5, 1])
+    ax.set_yticklabels(["−1.0\n(100% con)", "−0.5", "0", "0.5", "+1.0\n(100% pro)"], fontsize=8)
+    ax.set_title(
+        f"Stance distribution by identity cue — Qwen3.5-9B ({mode} run)\n"
+        f"Each dot = one topic · median shown in black · neutral framing only",
+        fontsize=10, pad=10,
+    )
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=180, bbox_inches="tight")
+    plt.close()
+    print(f"  Saved violin plot → {out_path}")
+
+
+def top_n_by_spread(scores_df: pd.DataFrame, n: int = 25) -> list:
+    """
+    Return the N topics with the highest std dev of bias score across cue conditions.
+    These are the topics where identity cues produce the most variation — i.e.,
+    where personalization is actually happening.
+    """
+    neutral = scores_df[scores_df["topic_polarity"] == "neutral"]
+    spread = (
+        neutral.groupby("topic_neutral")["bias_score"]
+        .std()
+        .sort_values(ascending=False)
+    )
+    return spread.head(n).index.tolist()
+
+
 # ── Summary statistics ────────────────────────────────────────────────────────
 
 def print_summary(scores_df: pd.DataFrame):
@@ -275,11 +356,24 @@ def main():
     print_summary(scores_df)
     wilcoxon_tests(scores_df)
 
-    print("\nGenerating dot plot ...")
-    make_dot_plot(
+    print("\nGenerating figures ...")
+
+    # Figure 1: violin — overall bias distribution per cue across all topics
+    make_violin_plot(
         scores_df,
-        out_path=os.path.join(FIGURES_DIR, f"dot_plot_{args.mode}.png"),
+        out_path=os.path.join(FIGURES_DIR, f"violin_{args.mode}.png"),
         mode=args.mode,
+    )
+
+    # Figure 2: dot plot — all topics (fast) or top 25 by spread (full)
+    n_topics = scores_df["topic_neutral"].nunique()
+    top_n = 25 if n_topics > 30 else n_topics
+    top_topics = top_n_by_spread(scores_df, n=top_n)
+    filtered = scores_df[scores_df["topic_neutral"].isin(top_topics)]
+    make_dot_plot(
+        filtered,
+        out_path=os.path.join(FIGURES_DIR, f"dot_plot_{args.mode}.png"),
+        mode=f"{args.mode} · top {top_n} topics by cue spread",
     )
     print("Done.")
 
