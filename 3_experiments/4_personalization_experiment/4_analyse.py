@@ -312,25 +312,58 @@ def print_summary(scores_df: pd.DataFrame):
     print(delta.round(3).to_string())
 
 
-def wilcoxon_tests(scores_df: pd.DataFrame):
-    print("\n" + "-" * 72)
-    print("WILCOXON SIGNED-RANK TEST  H₀: cue produces no stance shift")
-    print("(neutral framing only, delta = cue bias − baseline bias)")
+def stratify_topics(scores_df: pd.DataFrame, contested_threshold: float = 0.5):
+    """
+    Split topics into two groups based on the baseline bias score:
+      - Contested:    |baseline_bias| <= threshold  (model has no overwhelming default)
+      - Morally clear: |baseline_bias| > threshold  (model defaults strongly pro or con)
+
+    The Wilcoxon test across ALL topics loses power because ~150 morally clear topics
+    produce delta≈0 for every cue (the model's default is too strong to override).
+    Running on contested topics isolates the topics where cues can actually matter.
+    """
     neutral = scores_df[scores_df["topic_polarity"] == "neutral"]
-    for cue_id in CUE_ORDER:
-        if cue_id == "baseline":
-            continue
-        deltas = neutral[neutral["cue_id"] == cue_id]["bias_delta"].dropna()
-        if len(deltas) < 5:
-            print(f"  {cue_id:22s}: too few data points ({len(deltas)})")
-            continue
-        stat, p = stats.wilcoxon(deltas)
-        sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"
-        print(
-            f"  {cue_id:22s}: W={stat:.0f}, p={p:.4f} {sig:3s}  "
-            f"mean_delta={deltas.mean():+.3f}  "
-            f"(n={len(deltas)})"
-        )
+    baseline = neutral[neutral["cue_id"] == "baseline"][["topic_neutral", "bias_score"]]
+    baseline = baseline.rename(columns={"bias_score": "baseline_bias"})
+
+    contested_topics = baseline[baseline["baseline_bias"].abs() <= contested_threshold]["topic_neutral"].tolist()
+    clear_topics     = baseline[baseline["baseline_bias"].abs() >  contested_threshold]["topic_neutral"].tolist()
+
+    return contested_topics, clear_topics
+
+
+def wilcoxon_tests(scores_df: pd.DataFrame, contested_threshold: float = 0.5):
+    neutral = scores_df[scores_df["topic_polarity"] == "neutral"]
+    contested_topics, clear_topics = stratify_topics(scores_df, contested_threshold)
+
+    for label, topic_set in [
+        (f"ALL topics (n={len(contested_topics)+len(clear_topics)})", None),
+        (f"CONTESTED topics |baseline|≤{contested_threshold} (n={len(contested_topics)})", contested_topics),
+        (f"MORALLY CLEAR topics |baseline|>{contested_threshold} (n={len(clear_topics)})", clear_topics),
+    ]:
+        print(f"\n{'-' * 72}")
+        print(f"WILCOXON SIGNED-RANK TEST — {label}")
+        print("H₀: identity cue produces no stance shift vs. baseline")
+
+        subset = neutral if topic_set is None else neutral[neutral["topic_neutral"].isin(topic_set)]
+
+        for cue_id in CUE_ORDER:
+            if cue_id == "baseline":
+                continue
+            deltas = subset[subset["cue_id"] == cue_id]["bias_delta"].dropna()
+            if len(deltas) < 5:
+                print(f"  {cue_id:22s}: too few data points ({len(deltas)})")
+                continue
+            # Wilcoxon requires non-zero deltas; skip if all tied at 0
+            if (deltas == 0).all():
+                print(f"  {cue_id:22s}: all deltas = 0, test not applicable")
+                continue
+            stat, p = stats.wilcoxon(deltas)
+            sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"
+            print(
+                f"  {cue_id:22s}: W={stat:.0f}, p={p:.4f} {sig:3s}  "
+                f"mean_delta={deltas.mean():+.3f}  (n={len(deltas)})"
+            )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
